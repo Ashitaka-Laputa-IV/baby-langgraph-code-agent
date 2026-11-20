@@ -21,7 +21,7 @@ execution: code
 
 ### Summary
 
-Build a small, readable Python code agent in this empty repository. It runs an interactive terminal session, streams model output, exposes four tools (`list_dir`, `read_file`, `write_file`, `run_shell`), and keeps one conversation thread per process. It authenticates with the `OPENCODEGOAPIKEY` environment variable and uses the OpenCode Go OpenAI-compatible endpoint. LangChain APIs must be verified against the LangChain docs MCP before implementation because that ecosystem changes quickly.
+Build a small, readable Python code agent in this empty repository. It runs an interactive terminal session, streams model output, exposes four tools (`list_dir`, `read_file`, `write_file`, `run_shell`), and keeps one conversation thread per process. It authenticates with the `OPENCODE_API_KEY` environment variable and uses the OpenCode Go OpenAI-compatible endpoint. LangChain APIs must be verified against the LangChain docs MCP before implementation because that ecosystem changes quickly.
 
 ### Problem Frame
 
@@ -31,8 +31,8 @@ The repository currently contains no application code. Building a code agent fro
 
 **Runtime and configuration**
 
-- R1. Starting the application without `OPENCODEGOAPIKEY` set exits with a clear, actionable error that names the variable and does not print or echo any key value.
-- R2. The chat model is created through LangChain against an OpenAI-compatible endpoint: base URL `https://opencode.ai/inference/go/openai/v1`, API key read from `OPENCODEGOAPIKEY`, model name from `OPENCODEGO_MODEL` with a working default.
+- R1. Starting the application without `OPENCODE_API_KEY` set exits with a clear, actionable error that names the variable and does not print or echo any key value.
+- R2. The chat model is created through LangChain against an OpenAI-compatible endpoint: base URL `https://opencode.ai/inference/go/openai/v1`, API key read from `OPENCODE_API_KEY`, model name from `OPENCODEGO_MODEL` with a working default.
 - R3. The application runs on Python 3.12 and its declared dependencies install through a single `uv sync` in a clean checkout.
 
 **Agent behavior**
@@ -92,7 +92,7 @@ KTD7. **Test with `pytest` and a recorded Rich console.** `langchain_core` fake 
 
 ```mermaid
 flowchart TB
-  CLI["Rich CLI loop<br/>prompt · streaming · /reset"] --> Settings["Settings<br/>env → OPENCODEGOAPIKEY"]
+  CLI["Rich CLI loop<br/>prompt · streaming · /reset"] --> Settings["Settings<br/>env → OPENCODE_API_KEY"]
   Settings --> Factory["Model factory<br/>ChatOpenAI(base_url, key, model)"]
   Factory --> Agent["create_agent<br/>LangGraph compiled graph"]
   Agent --> Model["Chat model"]
@@ -139,7 +139,7 @@ Turn sequence: the CLI reads a line, appends the user message to the agent input
 - **Patterns to follow:** Standard `src/` layout; `__main__.py` delegates to `cli.main`; U5 extends this module with the REPL rather than replacing it.
 - **Test scenarios:**
   - `--help` exits zero and prints usage without a key and without constructing a model.
-  - Running without `OPENCODEGOAPIKEY` exits non-zero and prints the variable name.
+  - Running without `OPENCODE_API_KEY` exits non-zero and prints the variable name.
 - **Verification:** `uv sync` succeeds and `uv run baby-code-agent --help` prints usage without importing the network stack.
 
 ### U2. Settings and model factory
@@ -149,12 +149,12 @@ Turn sequence: the CLI reads a line, appends the user message to the agent input
 - **Dependencies:** U1
 - **Files:** `src/baby_code_agent/settings.py`, `src/baby_code_agent/model.py`, `tests/test_settings.py`, `tests/test_model.py`
 - **Approach:**
-  1. `Settings` holds `api_key`, `base_url`, and `model`; read `OPENCODEGOAPIKEY`, `OPENCODEGO_BASE_URL` (default the OpenCode Go endpoint), and `OPENCODEGO_MODEL` (default `deepseek-v4.1-flash`).
-  2. Missing or blank `OPENCODEGOAPIKEY` raises a domain error whose message names the variable and never echoes a value.
+  1. `Settings` holds `api_key`, `base_url`, and `model`; read `OPENCODE_API_KEY`, `OPENCODEGO_BASE_URL` (default the OpenCode Go endpoint), and `OPENCODEGO_MODEL` (default `deepseek-v4.1-flash`).
+  2. Missing or blank `OPENCODE_API_KEY` raises a domain error whose message names the variable and never echoes a value.
   3. The model factory builds `ChatOpenAI(model=..., api_key=..., base_url=..., temperature=0)` and sets a bounded timeout; it returns the instance without invoking it.
   4. Do not call `load_dotenv`; the key comes from the process environment only.
 - **Test scenarios:**
-  - Missing key raises `ConfigError`; the message contains `OPENCODEGOAPIKEY` and not the other environment values.
+  - Missing key raises `ConfigError`; the message contains `OPENCODE_API_KEY` and not the other environment values.
   - Blank/whitespace key is treated as missing.
   - Defaults resolve to the documented base URL and default model.
   - `OPENCODEGO_MODEL` overrides the default; the factory passes it to the model instance.
@@ -247,12 +247,12 @@ Turn sequence: the CLI reads a line, appends the user message to the agent input
 | Entry point | `uv run baby-code-agent --help` | U1, U5 |
 | Live smoke (manual, key required) | `uv run baby-code-agent` then a read-only request | U6 |
 
-Tests must not require `OPENCODEGOAPIKEY` or network access. The live smoke is the only network-dependent check and is recorded as manual evidence when a key is available; when it is unavailable, the implementation reports the gap rather than claiming it passed.
+Tests must not require `OPENCODE_API_KEY` or network access. The live smoke is the only network-dependent check and is recorded as manual evidence when a key is available; when it is unavailable, the implementation reports the gap rather than claiming it passed.
 
 ## Definition of Done
 
 - All six units are implemented, and `uv run pytest` passes from a clean environment.
-- `uv run baby-code-agent --help` works without a key; starting a session without the key prints the actionable `OPENCODEGOAPIKEY` error.
+- `uv run baby-code-agent --help` works without a key; starting a session without the key prints the actionable `OPENCODE_API_KEY` error.
 - A session with a key (or a fake model in tests) shows streamed output, visible tool calls, working `/help`, `/reset`, `/exit`, and a shell confirmation that defaults to no.
 - No secret value appears in output, error messages, or committed files; no abandoned experimental code remains in the diff.
 - `README.md` matches the shipped commands and documents the approval boundary.

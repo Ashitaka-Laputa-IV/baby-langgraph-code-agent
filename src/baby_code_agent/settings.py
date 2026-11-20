@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 DEFAULT_BASE_URL = "https://opencode.ai/inference/go/openai/v1"
 DEFAULT_MODEL = "deepseek-v4.1-flash"
 
-API_KEY_ENV = "OPENCODEGOAPIKEY"
+API_KEY_ENV = "OPENCODE_API_KEY"
 MODEL_ENV = "OPENCODEGO_MODEL"
 BASE_URL_ENV = "OPENCODEGO_BASE_URL"
 

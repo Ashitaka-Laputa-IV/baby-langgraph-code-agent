@@ -25,8 +25,8 @@ The agent reads configuration from the process environment only. It never loads 
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `OPENCODEGOAPIKEY` | yes | — | API key for the OpenCode Go inference endpoint |
-| `OPENCODEGO_MODEL` | no | `deepseek-v4.1-flash` | Model id sent to the provider |
+| `OPENCODE_API_KEY` | yes | — | API key for the OpenCode Go inference endpoint |
+| `OPENCODEGO_MODEL` | no | `deepseek-v4.1-flash` | Model id sent to the provider (DeepSeek V4.1 Flash by default) |
 | `OPENCODEGO_BASE_URL` | no | `https://opencode.ai/inference/go/openai/v1` | OpenAI-compatible endpoint |
 
 Point `OPENCODEGO_BASE_URL` at another OpenAI-compatible endpoint when this machine

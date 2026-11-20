@@ -36,7 +36,7 @@ def output_of(console):
 
 
 def test_help_exits_zero_without_key(monkeypatch, capsys):
-    monkeypatch.delenv("OPENCODEGOAPIKEY", raising=False)
+    monkeypatch.delenv("OPENCODE_API_KEY", raising=False)
 
     with pytest.raises(SystemExit) as excinfo:
         main(["--help"])
@@ -46,10 +46,10 @@ def test_help_exits_zero_without_key(monkeypatch, capsys):
 
 
 def test_missing_key_exits_non_zero(monkeypatch, capsys):
-    monkeypatch.delenv("OPENCODEGOAPIKEY", raising=False)
+    monkeypatch.delenv("OPENCODE_API_KEY", raising=False)
 
     assert main([]) == 2
-    assert "OPENCODEGOAPIKEY" in capsys.readouterr().err
+    assert "OPENCODE_API_KEY" in capsys.readouterr().err
 
 
 def test_help_command_lists_commands(tmp_path):
