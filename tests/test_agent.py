@@ -1,33 +1,13 @@
 from pathlib import Path
 
 import pytest
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 
 from baby_code_agent.agent import build_agent, new_thread_id
 from baby_code_agent.tools import build_tools
-
-
-class ScriptedToolModel(BaseChatModel):
-    """A fake chat model that replays scripted AI messages and supports tool binding."""
-
-    responses: list[AIMessage]
-    seen_message_counts: list[int] = []
-
-    @property
-    def _llm_type(self) -> str:
-        return "scripted-tool-model"
-
-    def bind_tools(self, tools, **kwargs):
-        return self
-
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:
-        self.seen_message_counts.append(len(messages))
-        index = min(len(self.seen_message_counts) - 1, len(self.responses) - 1)
-        return ChatResult(generations=[ChatGeneration(message=self.responses[index])])
+from tests.fakes import ScriptedToolModel
 
 
 def call(name: str, args: dict, call_id: str) -> AIMessage:
