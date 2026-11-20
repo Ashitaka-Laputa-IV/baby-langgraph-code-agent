@@ -1,5 +1,7 @@
 # Baby LangGraph Code Agent
 
+English | [简体中文](README.zh-CN.md)
+
 A small, readable coding agent built on LangGraph with a Rich terminal interface.
 It reads, edits, and runs code in the directory where you start it. For search, ask
 it to run `rg`, `findstr`, or another shell search command.
