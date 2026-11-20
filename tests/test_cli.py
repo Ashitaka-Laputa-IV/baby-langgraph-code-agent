@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage
 from rich.console import Console
 
 from baby_code_agent.agent import build_agent
-from baby_code_agent.cli import Session, main, run_repl
+from baby_code_agent.cli import Session, build_confirm, main, run_repl
 from baby_code_agent.tools import build_tools
 from tests.fakes import RaisingModel, ScriptedToolModel
 
@@ -111,6 +111,39 @@ def test_denied_shell_call_is_rendered_and_turn_completes(tmp_path):
     text = output_of(console)
     assert "denied" in text
     assert "understood" in text
+
+
+def test_confirm_refuses_shell_in_non_interactive_console():
+    console = make_console()
+
+    assert build_confirm(console)("echo hi") is False
+    assert "non-interactive console" in output_of(console)
+
+
+def test_confirm_defaults_to_no_and_recovers_from_eof(monkeypatch, tmp_path):
+    console = Console(file=io.StringIO(), record=True, force_terminal=True, width=110)
+    confirm = build_confirm(console)
+
+    monkeypatch.setattr("rich.prompt.Confirm.ask", lambda *args, **kwargs: False)
+    assert confirm("echo hi") is False
+
+    def raise_eof(*args, **kwargs):
+        raise EOFError
+
+    monkeypatch.setattr("rich.prompt.Confirm.ask", raise_eof)
+    assert confirm("echo hi") is False
+
+
+def test_renderer_escapes_terminal_control_sequences(tmp_path):
+    console = Console(file=io.StringIO(), record=True, force_terminal=False, width=110)
+    responses = [AIMessage(content="ok\x1b[2J\x1b]52;c;ZWNo\x1b\\ done")]
+    session = make_session(tmp_path, responses)
+
+    run_repl(session, console, "test-model", tmp_path, feed(["go", "/exit"]))
+
+    text = output_of(console)
+    assert "\x1b" not in text
+    assert "\\e[2J" in text
 
 
 def test_turn_error_does_not_end_session(tmp_path):

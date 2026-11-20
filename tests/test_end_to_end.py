@@ -53,6 +53,8 @@ def test_api_key_never_appears_in_model_repr():
 
     assert SENTINEL_KEY not in repr(model)
     assert SENTINEL_KEY not in str(model)
+    assert SENTINEL_KEY not in repr(settings)
+    assert SENTINEL_KEY not in str(settings)
 
 
 def test_config_error_never_echoes_other_environment_values():

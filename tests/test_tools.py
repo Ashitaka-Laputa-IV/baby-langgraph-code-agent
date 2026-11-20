@@ -1,8 +1,13 @@
+import sys
 from pathlib import Path
 
 import pytest
 
-from baby_code_agent.tools import build_tools, format_command_for_display
+from baby_code_agent.tools import (
+    build_tools,
+    format_command_for_display,
+    sanitize_for_terminal,
+)
 
 
 @pytest.fixture
@@ -87,6 +92,27 @@ def test_write_file_refuses_vcs_metadata(root):
     assert not (root / ".git").exists()
 
 
+def test_write_file_refuses_nested_vcs_metadata(root):
+    tools = build_tools(root, confirm=lambda _: False)
+
+    result = invoke(tools, "write_file", path="sub/.git/hooks/pre-commit", content="echo hi")
+
+    assert result.startswith("Error:")
+    assert not (root / "sub").exists()
+
+
+def test_run_shell_refuses_nul_without_confirming(root):
+    def confirm(_command):
+        raise AssertionError("confirmer must not run for a NUL command")
+
+    tools = build_tools(root, confirm=confirm)
+
+    result = invoke(tools, "run_shell", command="echo a\x00b")
+
+    assert result.startswith("Error:")
+    assert "NUL" in result
+
+
 def test_run_shell_denied_does_not_spawn(root):
     calls = []
 
@@ -140,10 +166,22 @@ def test_run_shell_timeout(root, monkeypatch):
     monkeypatch.setattr(tools_module, "SHELL_TIMEOUT_SECONDS", 0.2)
     tools = build_tools(root, confirm=lambda _: True)
 
-    result = invoke(tools, "run_shell", command="ping 127.0.0.1 -n 5 > NUL")
+    result = invoke(
+        tools,
+        "run_shell",
+        command=f'"{sys.executable}" -c "import time; time.sleep(5)"',
+    )
 
     assert "timed out" in result.lower()
 
 
 def test_format_command_for_display_escapes_control_characters():
     assert format_command_for_display("echo a\nb\rc\x1bd\x00") == "echo a\\nb\\rc\\ed\\x00"
+
+
+def test_format_command_for_display_escapes_bidi_overrides():
+    assert format_command_for_display("rm -rf \u202etxt.exe") == "rm -rf \\u202etxt.exe"
+
+
+def test_sanitize_for_terminal_keeps_newlines_but_escapes_controls():
+    assert sanitize_for_terminal("line\nan\x1b[2J\x9b") == "line\nan\\e[2J\\x9b"

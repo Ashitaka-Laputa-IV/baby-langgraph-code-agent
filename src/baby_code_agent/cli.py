@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -20,12 +20,16 @@ from rich.text import Text
 from baby_code_agent.agent import build_agent, new_thread_id
 from baby_code_agent.model import create_chat_model
 from baby_code_agent.settings import ConfigError, load_settings
-from baby_code_agent.tools import build_tools, format_command_for_display
+from baby_code_agent.tools import build_tools, format_command_for_display, sanitize_for_terminal
 
+EXIT_COMMANDS = ("/exit", "/quit")
+HELP_COMMAND = "/help"
+RESET_COMMAND = "/reset"
 HELP_TEXT = """\
 /help   show this help
 /reset  start a new conversation thread
 /exit   leave the session (Ctrl+C and EOF also exit)
+/quit   alias for /exit
 """
 
 
@@ -35,22 +39,15 @@ class Session:
     thread_id: str = field(default_factory=new_thread_id)
 
     def reset(self) -> None:
+        previous = self.thread_id
         self.thread_id = new_thread_id()
-
-
-def _chunk_text(chunk: AIMessage | AIMessageChunk) -> str:
-    content = chunk.content
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for block in content:
-            if isinstance(block, str):
-                parts.append(block)
-            elif isinstance(block, dict) and block.get("type") in ("text", "text_delta"):
-                parts.append(str(block.get("text", "")))
-        return "".join(parts)
-    return ""
+        checkpointer = getattr(self.agent, "checkpointer", None)
+        delete_thread = getattr(checkpointer, "delete_thread", None)
+        if callable(delete_thread):
+            try:
+                delete_thread(previous)
+            except Exception:  # noqa: BLE001 - a reset must never fail the session
+                pass
 
 
 class TurnRenderer:
@@ -64,7 +61,7 @@ class TurnRenderer:
     def add_text(self, text: str) -> None:
         if not text:
             return
-        self._buffer += text
+        self._buffer += sanitize_for_terminal(text)
         if self._live is None:
             self._live = Live(
                 Markdown(self._buffer),
@@ -83,28 +80,41 @@ class TurnRenderer:
             self._live = None
         self._buffer = ""
 
-    def show_tool_call(self, name: str, args: Any) -> None:
+    def _show_panel(self, title: str, body: Any, border_style: str) -> None:
         self.flush_text()
         self.console.print(
-            Panel(Text(str(args), overflow="fold"), title=f"tool · {name}", border_style="cyan")
+            Panel(
+                Text(sanitize_for_terminal(str(body)), overflow="fold"),
+                title=sanitize_for_terminal(title),
+                border_style=border_style,
+            )
         )
 
+    def show_tool_call(self, name: str, args: Any) -> None:
+        self._show_panel(f"tool · {name}", args, "cyan")
+
     def show_tool_result(self, content: Any) -> None:
-        self.flush_text()
-        self.console.print(
-            Panel(Text(str(content), overflow="fold"), title="result", border_style="dim")
-        )
+        self._show_panel("result", content, "dim")
 
     def close(self) -> None:
         self.flush_text()
 
 
-def _updates_from(chunk: Any) -> Iterable[tuple[str, list[Any]]]:
+def _render_message(renderer: TurnRenderer, message: Any) -> None:
+    if isinstance(message, AIMessage) and message.tool_calls:
+        for tool_call in message.tool_calls:
+            renderer.show_tool_call(tool_call["name"], tool_call["args"])
+    elif isinstance(message, ToolMessage):
+        renderer.show_tool_result(message.content)
+
+
+def _render_update(renderer: TurnRenderer, chunk: Any) -> None:
     if not isinstance(chunk, dict):
         return
-    for node, update in chunk.items():
+    for update in chunk.values():
         if isinstance(update, dict) and isinstance(update.get("messages"), list):
-            yield node, update["messages"]
+            for message in update["messages"]:
+                _render_message(renderer, message)
 
 
 def run_turn(session: Session, renderer: TurnRenderer, prompt: str) -> None:
@@ -119,16 +129,13 @@ def run_turn(session: Session, renderer: TurnRenderer, prompt: str) -> None:
             if mode == "messages":
                 message, _metadata = chunk
                 if isinstance(message, (AIMessage, AIMessageChunk)):
-                    renderer.add_text(_chunk_text(message))
+                    renderer.add_text(message.text)
             elif mode == "updates":
-                for _node, messages in _updates_from(chunk):
-                    for message in messages:
-                        if isinstance(message, AIMessage) and message.tool_calls:
-                            for tool_call in message.tool_calls:
-                                renderer.show_tool_call(tool_call["name"], tool_call["args"])
-                        elif isinstance(message, ToolMessage):
-                            renderer.show_tool_result(message.content)
+                _render_update(renderer, chunk)
     finally:
+        close = getattr(stream, "close", None)
+        if callable(close):
+            close()
         renderer.close()
 
 
@@ -156,9 +163,9 @@ def build_confirm(console: Console) -> Callable[[str], bool]:
 def render_banner(console: Console, model_name: str, root: Path) -> None:
     body = Text()
     body.append("model  ", style="dim")
-    body.append(f"{model_name}\n")
+    body.append(f"{sanitize_for_terminal(model_name)}\n")
     body.append("root   ", style="dim")
-    body.append(str(root))
+    body.append(sanitize_for_terminal(str(root)))
     console.print(Panel(body, title="Baby LangGraph Code Agent", border_style="cyan"))
 
 
@@ -184,12 +191,12 @@ def run_repl(
             continue
 
         command = prompt.casefold()
-        if command in ("/exit", "/quit"):
+        if command in EXIT_COMMANDS:
             return
-        if command == "/help":
+        if command == HELP_COMMAND:
             console.print(HELP_TEXT, markup=False)
             continue
-        if command == "/reset":
+        if command == RESET_COMMAND:
             session.reset()
             console.print("[dim]Started a new thread.[/dim]")
             continue
@@ -198,8 +205,8 @@ def run_repl(
         try:
             run_turn(session, renderer, prompt)
         except Exception as exc:  # noqa: BLE001 - a failed turn must not end the session
-            renderer.close()
-            console.print(f"[red]Error: {type(exc).__name__}: {exc}[/red]")
+            message = sanitize_for_terminal(f"Error: {type(exc).__name__}: {exc}")
+            console.print(Text(message, style="red"))
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1,7 +1,8 @@
 # Baby LangGraph Code Agent
 
 A small, readable coding agent built on LangGraph with a Rich terminal interface.
-It reads, searches, edits, and runs code in the directory where you start it.
+It reads, edits, and runs code in the directory where you start it. For search, ask
+it to run `rg`, `findstr`, or another shell search command.
 
 ## Requirements
 
@@ -43,6 +44,7 @@ Commands:
 - `/help` — show the command list
 - `/reset` — start a new conversation thread
 - `/exit` — leave the session (Ctrl+C and EOF also exit)
+- `/quit` — alias for `/exit`
 
 ## Data handling
 
