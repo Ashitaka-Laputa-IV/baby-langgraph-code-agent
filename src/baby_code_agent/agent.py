@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import wrap_tool_call
+from langchain.agents.middleware import ToolErrorMiddleware
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -25,17 +24,9 @@ Rules:
 """
 
 
-@wrap_tool_call
-def _tool_errors_as_messages(request, handler):
-    """Turn a raised tool exception into a tool result so one failure does not end the run."""
-    try:
-        return handler(request)
-    except Exception as exc:  # noqa: BLE001 - surface any tool failure to the model
-        return ToolMessage(
-            content=f"Error: {type(exc).__name__}: {exc}",
-            tool_call_id=request.tool_call["id"],
-            status="error",
-        )
+def _tool_error_content(exc: Exception, request: Any) -> str:
+    """Return a raised tool exception to the model so one failure does not end the run."""
+    return f"Error: {type(exc).__name__}: {exc}"
 
 
 def build_system_prompt(root: Path) -> str:
@@ -53,7 +44,7 @@ def build_agent(
         model=model,
         tools=tools,
         system_prompt=build_system_prompt(root),
-        middleware=[_tool_errors_as_messages],
+        middleware=[ToolErrorMiddleware(_tool_error_content)],
         checkpointer=checkpointer if checkpointer is not None else InMemorySaver(),
     )
 

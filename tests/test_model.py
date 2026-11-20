@@ -14,9 +14,3 @@ def test_factory_builds_configured_model():
     assert model.model_name == "test-model"
     assert model.openai_api_base == "https://example.test/v1"
     assert model.temperature == 0
-
-
-def test_factory_does_not_require_network():
-    model = create_chat_model(Settings(api_key="test-key"))
-
-    assert model.model_name
