@@ -63,7 +63,15 @@ File writes are not confirmed. They are limited to the working directory and ref
 ## Test
 
 ```bash
-uv run pytest
+uv run python -m pytest
 ```
 
-The test suite runs offline and does not require an API key.
+The test suite runs offline and does not require an API key. `uv run pytest` works
+too unless a local launcher shim intercepts the `pytest` executable.
+
+## Layout
+
+- `src/baby_code_agent/agent.py` — LangGraph agent assembly and system prompt
+- `src/baby_code_agent/tools.py` — rooted filesystem and shell tools
+- `src/baby_code_agent/cli.py` — Rich terminal session and streaming renderer
+- `src/baby_code_agent/settings.py`, `model.py` — environment config and chat model
