@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 DEFAULT_BASE_URL = "https://opencode.ai/inference/go/openai/v1"
 DEFAULT_MODEL = "deepseek-v4.1-flash"
 
-API_KEY_ENV = "OPENCODE_API_KEY"
+API_KEY_ENV = "OPENCODE_GO_API_KEY"
+FALLBACK_API_KEY_ENV = "OPENCODE_API_KEY"
 MODEL_ENV = "OPENCODEGO_MODEL"
 BASE_URL_ENV = "OPENCODEGO_BASE_URL"
 
@@ -33,7 +34,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
     """Read settings from the process environment, or from ``environ`` in tests."""
     env = os.environ if environ is None else environ
 
-    api_key = _read(env, API_KEY_ENV)
+    api_key = _read(env, API_KEY_ENV) or _read(env, FALLBACK_API_KEY_ENV)
     if not api_key:
         raise ConfigError(
             f"{API_KEY_ENV} is not set. Export your OpenCode Go API key before starting the agent."

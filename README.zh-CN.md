@@ -24,7 +24,7 @@ uv sync
 
 | 变量 | 是否必填 | 默认值 | 用途 |
 | --- | --- | --- | --- |
-| `OPENCODE_API_KEY` | 是 | — | OpenCode Go 推理端点的 API Key |
+| `OPENCODE_GO_API_KEY` | 是 | — | OpenCode Go 推理端点的 API Key（回退读取 `OPENCODE_API_KEY`） |
 | `OPENCODEGO_MODEL` | 否 | `deepseek-v4.1-flash` | 发送给服务商的模型 ID（默认 DeepSeek V4.1 Flash） |
 | `OPENCODEGO_BASE_URL` | 否 | `https://opencode.ai/inference/go/openai/v1` | OpenAI 兼容端点 |
 

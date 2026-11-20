@@ -5,6 +5,7 @@ from baby_code_agent.settings import (
     BASE_URL_ENV,
     DEFAULT_BASE_URL,
     DEFAULT_MODEL,
+    FALLBACK_API_KEY_ENV,
     MODEL_ENV,
     ConfigError,
     load_settings,
@@ -22,6 +23,20 @@ def test_missing_key_names_the_variable():
 def test_blank_key_is_missing():
     with pytest.raises(ConfigError):
         load_settings({API_KEY_ENV: "   "})
+
+
+def test_falls_back_to_the_legacy_variable():
+    settings = load_settings({FALLBACK_API_KEY_ENV: "fallback-key"})
+
+    assert settings.api_key == "fallback-key"
+
+
+def test_primary_variable_wins():
+    settings = load_settings(
+        {API_KEY_ENV: "primary-key", FALLBACK_API_KEY_ENV: "fallback-key"}
+    )
+
+    assert settings.api_key == "primary-key"
 
 
 def test_defaults():
