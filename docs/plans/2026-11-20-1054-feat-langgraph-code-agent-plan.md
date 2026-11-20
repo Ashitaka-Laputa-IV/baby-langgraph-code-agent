@@ -9,6 +9,8 @@ execution: code
 
 # Baby LangGraph Code Agent - Plan
 
+English | [简体中文](2026-11-20-1054-feat-langgraph-code-agent-plan.zh-CN.md)
+
 ## Goal Capsule
 
 - **Objective:** A developer can start one command in a repository, describe a coding task in natural language, and watch a tool-using agent read, search, edit, and verify files in that repository from a Rich terminal UI.
