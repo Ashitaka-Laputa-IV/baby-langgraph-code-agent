@@ -15,6 +15,8 @@ tags: [opencode-go, langchain, openai-compatible, session-header, configuration]
 
 # Calling OpenCode Go from a LangChain OpenAI-compatible client
 
+English | [简体中文](opencode-go-langchain-client.zh-CN.md)
+
 ## Context
 
 The agent talks to an OpenCode Go subscription through `langchain-openai`'s
